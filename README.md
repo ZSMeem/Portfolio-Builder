@@ -79,3 +79,9 @@ The **Portfolio Builder** project aims to simplify the process of creating profe
 By leveraging **AWS services**, **Docker**, and a **modern full-stack tech stack**, it provides a scalable and efficient platform for both creativity and performance.
 
 ---
+
+## Usage
+Install dependencies: `npm ci`
+- The dependencies are listed within `package.json`
+
+Make sure the program works by running `npm run dev`.
