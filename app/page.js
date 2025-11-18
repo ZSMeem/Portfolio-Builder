@@ -1,4 +1,10 @@
 /* Sample page to test configuration */
+import Navbar from '../components/Navbar';
 export default function Page() {
-  return <h1>Hello, Next.js!</h1>
+  return(
+    <div>
+      <Navbar/>
+       <h1>Hello, This is our Portfolio builder!</h1>
+    </div>
+  )
 }
