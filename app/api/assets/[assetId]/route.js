@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { authenticate } from '@/lib/auth';
-import { deleteFromS3 } from '@/lib/s3';
+// import { prisma } from '@/lib/db';
+// import { authenticate } from '@/lib/auth';
+// import { deleteFromS3 } from '@/lib/s3';
+
+import { prisma } from '../../../../lib/db.js';
+import { authenticate } from '../../../../lib/auth.js';
+import { deleteFromS3 } from '../../../../lib/s3.js';
+
 
 // DELETE /api/assets/[assetId] - Delete an asset
 export async function DELETE(request, { params }) {

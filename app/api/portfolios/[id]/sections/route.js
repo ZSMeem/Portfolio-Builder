@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { authenticate } from '@/lib/auth';
+import { prisma } from '../../../../../lib/db.js';
+import { authenticate } from '../../../../../lib/auth.js';
 
 // GET /api/portfolios/[id]/sections - Get all sections for a portfolio
-export async function GET(request, { params }) {
+export async function GET(request, context) {
     try {
+        const params = await context.params;
         const { id } = params;
         const { searchParams } = new URL(request.url);
         const includeHidden = searchParams.get('includeHidden') === 'true';
 
-        // Check if portfolio exists
         const portfolio = await prisma.portfolio.findUnique({
             where: { id }
         });
@@ -21,7 +21,6 @@ export async function GET(request, { params }) {
             );
         }
 
-        // If requesting hidden sections, require authentication
         let whereClause = { portfolioId: id };
 
         if (!includeHidden) {
@@ -54,7 +53,7 @@ export async function GET(request, { params }) {
 }
 
 // POST /api/portfolios/[id]/sections - Create a new section
-export async function POST(request, { params }) {
+export async function POST(request, context) {
     try {
         const user = await authenticate(request);
 
@@ -65,11 +64,11 @@ export async function POST(request, { params }) {
             );
         }
 
+        const params = await context.params;
         const { id } = params;
         const body = await request.json();
         const { type, title, content, order, isVisible } = body;
 
-        // Validation
         if (!type) {
             return NextResponse.json(
                 { error: 'Section type is required' },
@@ -77,7 +76,6 @@ export async function POST(request, { params }) {
             );
         }
 
-        // Valid section types
         const validTypes = ['hero', 'about', 'projects', 'contact', 'custom'];
         if (!validTypes.includes(type)) {
             return NextResponse.json(
@@ -86,7 +84,6 @@ export async function POST(request, { params }) {
             );
         }
 
-        // Check portfolio ownership
         const portfolio = await prisma.portfolio.findUnique({
             where: { id }
         });
@@ -105,7 +102,6 @@ export async function POST(request, { params }) {
             );
         }
 
-        // If order not provided, get the next available order
         let sectionOrder = order;
         if (sectionOrder === undefined) {
             const maxOrder = await prisma.section.findFirst({
@@ -116,7 +112,6 @@ export async function POST(request, { params }) {
             sectionOrder = (maxOrder?.order || 0) + 1;
         }
 
-        // Create section
         const section = await prisma.section.create({
             data: {
                 portfolioId: id,

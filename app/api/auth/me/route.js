@@ -1,5 +1,6 @@
-import { authenticate } from '@/lib/auth';
-
+// import { authenticate } from '@/lib/auth';
+import { prisma } from '../../../../lib/db.js';
+import { authenticate } from '../../../../lib/auth.js';
 export async function GET(request) {
   const user = await authenticate(request);
 

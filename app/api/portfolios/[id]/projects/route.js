@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { authenticate } from '@/lib/auth';
+import { prisma } from '../../../../../lib/db.js';
+import { authenticate } from '../../../../../lib/auth.js';
 
 // GET /api/portfolios/[id]/projects - Get all projects for a portfolio
-export async function GET(request, { params }) {
+export async function GET(request, context) {
     try {
+        const params = await context.params;
         const { id } = params;
         const { searchParams } = new URL(request.url);
         const featured = searchParams.get('featured') === 'true';
 
-        // Check if portfolio exists
         const portfolio = await prisma.portfolio.findUnique({
             where: { id }
         });
@@ -21,7 +21,6 @@ export async function GET(request, { params }) {
             );
         }
 
-        // Build where clause
         let whereClause = { portfolioId: id };
         if (featured) {
             whereClause.isFeatured = true;
@@ -47,7 +46,7 @@ export async function GET(request, { params }) {
 }
 
 // POST /api/portfolios/[id]/projects - Create a new project
-export async function POST(request, { params }) {
+export async function POST(request, context) {
     try {
         const user = await authenticate(request);
 
@@ -58,6 +57,7 @@ export async function POST(request, { params }) {
             );
         }
 
+        const params = await context.params;
         const { id } = params;
         const body = await request.json();
         const {
@@ -72,7 +72,6 @@ export async function POST(request, { params }) {
             isFeatured
         } = body;
 
-        // Validation
         if (!title) {
             return NextResponse.json(
                 { error: 'Title is required' },
@@ -80,7 +79,6 @@ export async function POST(request, { params }) {
             );
         }
 
-        // Check portfolio ownership
         const portfolio = await prisma.portfolio.findUnique({
             where: { id }
         });
@@ -99,7 +97,6 @@ export async function POST(request, { params }) {
             );
         }
 
-        // If order not provided, get the next available order
         let projectOrder = order;
         if (projectOrder === undefined) {
             const maxOrder = await prisma.project.findFirst({
@@ -110,7 +107,6 @@ export async function POST(request, { params }) {
             projectOrder = (maxOrder?.order || 0) + 1;
         }
 
-        // Create project
         const project = await prisma.project.create({
             data: {
                 portfolioId: id,
