@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../contexts/AuthContext';
 import { portfolioAPI } from '../../lib/api';
 import {
   Box,
@@ -12,11 +11,6 @@ import {
   CardActions,
   Typography,
   Grid,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
   Alert,
   CircularProgress,
   Chip,
@@ -31,24 +25,16 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
-export default function PortfolioDashboard() {
+export default function PortfoliosTab() {
   const router = useRouter();
-  const { user, logout } = useAuth();
   
   const [portfolios, setPortfolios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [origin, setOrigin] = useState('');
   
-  // Snackbar for copy feedback
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
-  
-  // Create dialog state
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [newPortfolioTitle, setNewPortfolioTitle] = useState('');
-  const [newPortfolioDescription, setNewPortfolioDescription] = useState('');
-  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -73,33 +59,9 @@ export default function PortfolioDashboard() {
     }
   };
 
-  const handleCreatePortfolio = async () => {
-    if (!newPortfolioTitle.trim()) return;
-
-    setCreating(true);
-    try {
-      const response = await portfolioAPI.create(
-        newPortfolioTitle,
-        newPortfolioDescription
-      );
-      
-      setPortfolios([response.portfolio, ...portfolios]);
-      setCreateDialogOpen(false);
-      setNewPortfolioTitle('');
-      setNewPortfolioDescription('');
-      
-      router.push(`/builder/${response.portfolio.id}`);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setCreating(false);
-    }
-  };
-
   const handleTogglePublish = async (id, currentStatus) => {
     try {
       await portfolioAPI.togglePublish(id, !currentStatus);
-      
       setPortfolios(portfolios.map(p => 
         p.id === id ? { ...p, isPublished: !currentStatus } : p
       ));
@@ -143,32 +105,11 @@ export default function PortfolioDashboard() {
   }
 
   return (
-    <Box sx={{ p: 4 }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 4 }}>
-        <Box>
-          <Typography variant="h4" gutterBottom>
-            My Portfolios
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Welcome back, {user?.name}!
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setCreateDialogOpen(true)}
-          >
-            New Portfolio
-          </Button>
-          <Button variant="outlined" onClick={() => router.push('/settings')}>
-            Settings
-          </Button>
-          <Button variant="outlined" onClick={logout}>
-            Logout
-          </Button>
-        </Box>
+    <Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+        <Typography variant="h4" fontWeight="bold">
+          My Portfolios
+        </Typography>
       </Box>
 
       {error && (
@@ -177,23 +118,14 @@ export default function PortfolioDashboard() {
         </Alert>
       )}
 
-      {/* Portfolios Grid */}
       {portfolios.length === 0 ? (
         <Card sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="h6" gutterBottom>
             No portfolios yet
           </Typography>
           <Typography variant="body2" color="text.secondary" gutterBottom>
-            Create your first portfolio to get started!
+            Go to the Home tab to create your first portfolio!
           </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setCreateDialogOpen(true)}
-            sx={{ mt: 2 }}
-          >
-            Create Portfolio
-          </Button>
         </Card>
       ) : (
         <Grid container spacing={3}>
@@ -280,7 +212,6 @@ export default function PortfolioDashboard() {
                   </Box>
                 </CardActions>
 
-                {/* Show public URL if published */}
                 {portfolio.isPublished && origin && (
                   <Box sx={{ px: 2, pb: 2, pt: 1, bgcolor: '#f5f5f5', borderRadius: 1, mt: 1 }}>
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
@@ -319,49 +250,6 @@ export default function PortfolioDashboard() {
         </Grid>
       )}
 
-      {/* Create Portfolio Dialog */}
-      <Dialog
-        open={createDialogOpen}
-        onClose={() => setCreateDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Create New Portfolio</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            fullWidth
-            label="Portfolio Title"
-            value={newPortfolioTitle}
-            onChange={(e) => setNewPortfolioTitle(e.target.value)}
-            margin="normal"
-            required
-          />
-          <TextField
-            fullWidth
-            label="Description (optional)"
-            value={newPortfolioDescription}
-            onChange={(e) => setNewPortfolioDescription(e.target.value)}
-            margin="normal"
-            multiline
-            rows={3}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCreateDialogOpen(false)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleCreatePortfolio}
-            variant="contained"
-            disabled={creating || !newPortfolioTitle.trim()}
-          >
-            {creating ? <CircularProgress size={24} /> : 'Create'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Copy Success Snackbar */}
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={3000}

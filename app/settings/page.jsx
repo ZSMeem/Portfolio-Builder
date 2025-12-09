@@ -23,7 +23,6 @@ import {
   IconButton,
   Badge,
 } from '@mui/material';
-import PersonIcon from '@mui/icons-material/Person';
 import LockIcon from '@mui/icons-material/Lock';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -34,6 +33,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const { user, logout, isAuthenticated, loading: authLoading, refreshUser } = useAuth();
   const fileInputRef = useRef(null);
+  const [mounted, setMounted] = useState(false);
 
   // Profile form
   const [name, setName] = useState('');
@@ -61,6 +61,10 @@ export default function SettingsPage() {
   const [deleteError, setDeleteError] = useState('');
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push('/auth');
     }
@@ -78,13 +82,11 @@ export default function SettingsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       setProfileError('Please upload an image file');
       return;
     }
 
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       setProfileError('Image must be less than 5MB');
       return;
@@ -95,35 +97,30 @@ export default function SettingsPage() {
 
     try {
       const reader = new FileReader();
-
+      
       reader.onload = async (e) => {
         const base64Image = e.target.result;
-
+        
         try {
           const response = await authAPI.uploadProfilePicture(base64Image);
-          console.log('Upload response:', response);
-
           setProfilePicture(response.user.profilePicture);
           setProfileSuccess('Profile picture updated!');
-
-          // Refresh user data in context
+          
           if (refreshUser) {
             await refreshUser();
-            console.log('User refreshed');
           }
         } catch (err) {
-          console.error('Upload error:', err);
           setProfileError(err.message || 'Failed to upload picture');
         } finally {
           setUploadingPicture(false);
         }
       };
-
+      
       reader.onerror = () => {
         setProfileError('Failed to read file');
         setUploadingPicture(false);
       };
-
+      
       reader.readAsDataURL(file);
     } catch (err) {
       setProfileError('Failed to upload picture');
@@ -137,8 +134,7 @@ export default function SettingsPage() {
       await authAPI.removeProfilePicture();
       setProfilePicture(null);
       setProfileSuccess('Profile picture removed');
-
-      // Refresh user data in context
+      
       if (refreshUser) {
         await refreshUser();
       }
@@ -158,8 +154,7 @@ export default function SettingsPage() {
     try {
       await authAPI.updateProfile(name, username);
       setProfileSuccess('Profile updated successfully!');
-
-      // Refresh user data
+      
       if (refreshUser) {
         await refreshUser();
       }
@@ -216,7 +211,7 @@ export default function SettingsPage() {
     }
   };
 
-  if (authLoading) {
+  if (!mounted || authLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}>
         <CircularProgress />
@@ -242,6 +237,7 @@ export default function SettingsPage() {
         Account Settings
       </Typography>
 
+      {/* Rest of your settings code stays exactly the same */}
       {/* Profile Section */}
       <Paper sx={{ p: 3, mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
@@ -274,7 +270,7 @@ export default function SettingsPage() {
               {!profilePicture && user?.name?.charAt(0).toUpperCase()}
             </Avatar>
           </Badge>
-
+          
           <input
             ref={fileInputRef}
             type="file"
@@ -282,7 +278,7 @@ export default function SettingsPage() {
             accept="image/*"
             onChange={handleProfilePictureUpload}
           />
-
+          
           <Box sx={{ flexGrow: 1 }}>
             <Typography variant="h6">{user?.name}</Typography>
             <Typography variant="body2" color="text.secondary">

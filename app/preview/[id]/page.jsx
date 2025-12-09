@@ -13,7 +13,9 @@ import {
   Avatar,
   Alert,
   Chip,
+  Button,
 } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 export default function PreviewPortfolioPage() {
   const { id } = useParams();
@@ -63,26 +65,46 @@ export default function PreviewPortfolioPage() {
     return (
       <Container maxWidth="md" sx={{ mt: 8 }}>
         <Alert severity="error">{error || 'Portfolio not found'}</Alert>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={() => router.push('/dashboard')}
+          sx={{ mt: 2 }}
+        >
+          Back to Dashboard
+        </Button>
       </Container>
     );
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f5', py: 6 }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f5' }}>
       {/* Preview Banner */}
-      <Box sx={{ bgcolor: 'warning.main', py: 2, mb: 4 }}>
+      <Box sx={{ bgcolor: 'warning.main', py: 2 }}>
         <Container maxWidth="lg">
-          <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Chip label="PREVIEW MODE" color="warning" />
-            This is how your portfolio will look when published
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Chip label="PREVIEW MODE" color="warning" />
+              <Typography variant="body1">
+                This is how your portfolio will look when published
+              </Typography>
+            </Box>
+            <Button
+              variant="contained"
+              startIcon={<ArrowBackIcon />}
+              onClick={() => router.push('/dashboard')}
+              sx={{ bgcolor: 'white', color: 'text.primary', '&:hover': { bgcolor: 'grey.200' } }}
+            >
+              Back to Dashboard
+            </Button>
+          </Box>
         </Container>
       </Box>
 
-      <Container maxWidth="lg">
+      <Container maxWidth="lg" sx={{ py: 6 }}>
         {/* Header */}
         <Paper elevation={0} sx={{ p: 6, mb: 4, textAlign: 'center', borderRadius: 3 }}>
           <Avatar
+            src={portfolio.user.profilePicture || undefined}
             sx={{
               width: 100,
               height: 100,
@@ -92,7 +114,7 @@ export default function PreviewPortfolioPage() {
               fontSize: '2rem',
             }}
           >
-            {portfolio.user.name.charAt(0).toUpperCase()}
+            {!portfolio.user.profilePicture && portfolio.user.name.charAt(0).toUpperCase()}
           </Avatar>
           
           <Typography variant="h3" gutterBottom fontWeight="bold">
@@ -169,8 +191,28 @@ export default function PreviewPortfolioPage() {
                     p: 3,
                     borderRadius: 3,
                     height: '100%',
+                    transition: 'transform 0.2s, box-shadow 0.2s',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: 4,
+                    },
                   }}
                 >
+                  {project.featuredImage && (
+                    <Box
+                      component="img"
+                      src={project.featuredImage}
+                      alt={project.title}
+                      sx={{
+                        width: '100%',
+                        height: 200,
+                        objectFit: 'cover',
+                        borderRadius: 2,
+                        mb: 2,
+                      }}
+                    />
+                  )}
+                  
                   <Typography variant="h6" gutterBottom fontWeight="600">
                     {project.title}
                   </Typography>
@@ -179,6 +221,49 @@ export default function PreviewPortfolioPage() {
                     <Typography variant="body2" color="text.secondary" paragraph>
                       {project.description}
                     </Typography>
+                  )}
+                  
+                  {project.technologies && project.technologies.length > 0 && (
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+                      {project.technologies.map((tech, i) => (
+                        <Chip
+                          key={i}
+                          label={tech}
+                          size="small"
+                          sx={{
+                            bgcolor: 'primary.light',
+                            color: 'primary.dark',
+                          }}
+                        />
+                      ))}
+                    </Box>
+                  )}
+                  
+                  {(project.liveUrl || project.githubUrl) && (
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                      {project.liveUrl && (
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          href={project.liveUrl}
+                          target="_blank"
+                          rel="noopener"
+                        >
+                          View Live →
+                        </Button>
+                      )}
+                      {project.githubUrl && (
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          href={project.githubUrl}
+                          target="_blank"
+                          rel="noopener"
+                        >
+                          GitHub →
+                        </Button>
+                      )}
+                    </Box>
                   )}
                 </Paper>
               ))}

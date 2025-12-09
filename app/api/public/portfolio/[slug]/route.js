@@ -1,55 +1,53 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../../../lib/db.js';
 
-// GET /api/public/portfolio/[slug] - Get a portfolio by slug (public)
-export async function GET(request, context) {
+export async function GET(request, { params }) {
   try {
-    const params = await context.params;
-    const { slug } = params;
+    const resolvedParams = await params;
+    const slug = resolvedParams.slug;
+    
+    console.log('=== PUBLIC PORTFOLIO API ===');
+    console.log('Slug requested:', slug);
 
-    const portfolio = await prisma.portfolio.findUnique({
-      where: { slug },
+    const portfolio = await prisma.portfolio.findFirst({
+      where: { 
+        slug: slug,
+        isPublished: true,
+      },
       include: {
-        sections: {
-          where: { isVisible: true },
-          orderBy: { order: 'asc' }
-        },
-        projects: {
-          orderBy: [
-            { isFeatured: 'desc' },
-            { order: 'asc' }
-          ]
-        },
         user: {
           select: {
+            id: true,
             name: true,
             username: true,
-            email: true,
+            profilePicture: true,
           }
-        }
-      }
+        },
+        sections: {
+          orderBy: { order: 'asc' },
+        },
+        projects: {
+          orderBy: { order: 'asc' },
+        },
+      },
     });
 
+    console.log('Portfolio found:', !!portfolio);
+
     if (!portfolio) {
+      console.log('No portfolio found with slug:', slug);
       return NextResponse.json(
-        { error: 'Portfolio not found' },
+        { error: 'Portfolio not found or not published' },
         { status: 404 }
       );
     }
 
-    if (!portfolio.isPublished) {
-      return NextResponse.json(
-        { error: 'Portfolio is not published' },
-        { status: 403 }
-      );
-    }
-
+    console.log('Returning portfolio:', portfolio.title);
     return NextResponse.json({ portfolio });
-
   } catch (error) {
-    console.error('Get public portfolio error:', error);
+    console.error('Error fetching public portfolio:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error: ' + error.message },
       { status: 500 }
     );
   }

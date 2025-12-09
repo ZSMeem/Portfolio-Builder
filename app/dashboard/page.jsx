@@ -1,24 +1,27 @@
 "use client";
 
-import { useAuth } from '../../contexts/AuthContext';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import PortfolioDashboard from '../../components/dashboard/PortfolioDashboard';
+import { useAuth } from '../../contexts/AuthContext';
 import { CircularProgress, Box } from '@mui/material';
+import DashboardLayout from '../../components/dashboard/DashboardLayout';
+import HomeTab from '../../components/dashboard/HomeTab';
+import PortfoliosTab from '../../components/dashboard/PortfoliosTab';
 
 export default function DashboardPage() {
-  const { isAuthenticated, loading } = useAuth();
   const router = useRouter();
+  const { isAuthenticated, loading } = useAuth();
+  const [activeTab, setActiveTab] = useState(0);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       router.push('/auth');
     }
-  }, [isAuthenticated, loading, router]);
+  }, [loading, isAuthenticated, router]);
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
         <CircularProgress />
       </Box>
     );
@@ -28,5 +31,10 @@ export default function DashboardPage() {
     return null;
   }
 
-  return <PortfolioDashboard />;
+  return (
+    <DashboardLayout activeTab={activeTab} onTabChange={setActiveTab}>
+      {activeTab === 0 && <HomeTab />}
+      {activeTab === 1 && <PortfoliosTab />}
+    </DashboardLayout>
+  );
 }
