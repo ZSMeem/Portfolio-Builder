@@ -1,10 +1,9 @@
-// components/dashboard/PortfolioDashboard.jsx
 "use client";
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
-import { portfolioAPI } from '../../lib/api.js';
+import { portfolioAPI } from '../../lib/api';
 import {
   Box,
   Button,
@@ -36,12 +35,20 @@ export default function PortfolioDashboard() {
   const [portfolios, setPortfolios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [origin, setOrigin] = useState(''); // Store origin in state
 
   // Create dialog state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newPortfolioTitle, setNewPortfolioTitle] = useState('');
   const [newPortfolioDescription, setNewPortfolioDescription] = useState('');
   const [creating, setCreating] = useState(false);
+
+  // Get window.location.origin only on client side
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setOrigin(window.location.origin);
+    }
+  }, []);
 
   useEffect(() => {
     loadPortfolios();
@@ -75,7 +82,6 @@ export default function PortfolioDashboard() {
       setNewPortfolioTitle('');
       setNewPortfolioDescription('');
 
-      // Navigate to editor for new portfolio
       router.push(`/builder/${response.portfolio.id}`);
     } catch (err) {
       setError(err.message);
@@ -88,7 +94,6 @@ export default function PortfolioDashboard() {
     try {
       await portfolioAPI.togglePublish(id, !currentStatus);
 
-      // Update local state
       setPortfolios(portfolios.map(p =>
         p.id === id ? { ...p, isPublished: !currentStatus } : p
       ));
@@ -139,6 +144,9 @@ export default function PortfolioDashboard() {
             onClick={() => setCreateDialogOpen(true)}
           >
             New Portfolio
+          </Button>
+          <Button variant="outlined" onClick={() => router.push('/settings')}>
+            Settings
           </Button>
           <Button variant="outlined" onClick={logout}>
             Logout
@@ -215,25 +223,23 @@ export default function PortfolioDashboard() {
                       Edit
                     </Button>
 
-                    {/* Preview button - works even if not published */}
                     <Button
                       size="small"
                       variant="outlined"
-                      onClick={() => window.open(`/preview/${portfolio.id}`, '_blank')}
+                      onClick={() => router.push(`/preview/${portfolio.id}`)}
                       color="secondary"
                     >
                       Preview
                     </Button>
 
-                    {/* Public view button - only shown when published */}
                     {portfolio.isPublished && (
                       <Button
                         size="small"
                         variant="contained"
-                        onClick={() => window.open(`/portfolio/${portfolio.slug}`, '_blank')}
+                        onClick={() => router.push(`/portfolio/${portfolio.slug}`)}
                         color="success"
                       >
-                        View Public
+                        View
                       </Button>
                     )}
                   </Box>
@@ -257,8 +263,8 @@ export default function PortfolioDashboard() {
                   </Box>
                 </CardActions>
 
-                {/* Show public URL if published */}
-                {portfolio.isPublished && (
+                {/* Show public URL if published - only render on client */}
+                {portfolio.isPublished && origin && (
                   <Box sx={{ px: 2, pb: 2, pt: 1, bgcolor: '#f5f5f5', borderRadius: 1, mt: 1 }}>
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
                       Public URL:
@@ -271,7 +277,7 @@ export default function PortfolioDashboard() {
                         wordBreak: 'break-all'
                       }}
                     >
-                      {window.location.origin}/portfolio/{portfolio.slug}
+                      {origin}/portfolio/{portfolio.slug}
                     </Typography>
                   </Box>
                 )}

@@ -18,9 +18,9 @@ import Menu from "@mui/material/Menu";
 
 export default function RichTextEditor({
   initialValue,
-  onChange, // called with final HTML when user clicks Done
-  onDone, // called after save to close editor
-  onImageUpload, // (optional) file => url, parent can store images
+  onChange,
+  onDone,
+  onImageUpload,
 }) {
   const [draftContent, setDraftContent] = React.useState(initialValue || "");
   const editorRef = React.useRef(null);
@@ -31,7 +31,7 @@ export default function RichTextEditor({
   const openTextColor = Boolean(anchorTextColor);
   const openHighlight = Boolean(anchorHighlight);
 
-  // Sync editor when initialValue changes (when opening editor / switching section)
+  // Sync editor when initialValue changes
   React.useEffect(() => {
     const html = initialValue || "";
     setDraftContent(html);
@@ -45,62 +45,78 @@ export default function RichTextEditor({
     if (editorRef.current) {
       const html = editorRef.current.innerHTML;
       setDraftContent(html);
+      console.log('Updated content:', html.substring(0, 100)); // Debug log
     }
   };
 
-  // Apply execCommand with optional value
+  // Apply execCommand
   const applyCommand = (command, value = null) => {
     document.execCommand(command, false, value);
+    editorRef.current?.focus();
     updateDraftFromDom();
   };
 
   // Insert raw HTML at caret
   const insertHtml = (html) => {
-    document.execCommand("insertHTML", false, html);
-    updateDraftFromDom();
+    if (editorRef.current) {
+      editorRef.current.focus();
+      document.execCommand("insertHTML", false, html);
+      updateDraftFromDom();
+    }
   };
 
   const handleContentInput = () => {
     updateDraftFromDom();
   };
 
-  // Upload button → let parent store image (for gallery) and get URL, then insert inline
-  const handleUploadClick = (e) => {
+  // Upload button
+  const handleUploadClick = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    console.log('Uploading file:', file.name);
+
     let url = null;
     if (onImageUpload) {
-      // parent can also push this into section.images and return the URL
-      url = onImageUpload(file);
+      try {
+        url = await onImageUpload(file);
+        console.log('Got URL:', url?.substring(0, 50));
+      } catch (err) {
+        console.error('Upload error:', err);
+        alert('Failed to upload image');
+        return;
+      }
     } else {
       url = URL.createObjectURL(file);
     }
-    if (!url) return;
 
-    insertHtml(
-      `<img src="${url}" style="max-width: 100%; border-radius: 4px; margin-top: 4px;" />`
-    );
+    if (!url) {
+      console.error('No URL returned');
+      return;
+    }
+
+    // Insert image at cursor position
+    const imgHtml = `<img src="${url}" style="max-width: 100%; border-radius: 4px; margin: 8px 0; display: block;" alt="${file.name}" />`;
+    insertHtml(imgHtml);
+    
+    // Clear the file input so same file can be uploaded again
+    e.target.value = '';
   };
 
-  // Add a link
   const handleAddLink = () => {
     const url = window.prompt("Enter URL:");
     if (!url) return;
     applyCommand("createLink", url);
   };
 
-  // Insert a simple code block
   const handleInsertCodeBlock = () => {
     insertHtml("<pre><code>// your code here</code></pre>");
   };
 
-  // Insert a blockquote
   const handleInsertBlockquote = () => {
     applyCommand("formatBlock", "<blockquote>");
   };
 
-  // Insert a simple 2x2 table
   const handleInsertTable = () => {
     const tableHtml = `
       <table border="1" style="border-collapse: collapse; width: 100%; margin-top: 4px;">
@@ -117,27 +133,31 @@ export default function RichTextEditor({
     insertHtml(tableHtml);
   };
 
-  // Insert emoji
   const handleInsertEmoji = (emoji) => {
     insertHtml(emoji);
   };
 
-  // Drag-and-drop image into editor
-  const handleDrop = (e) => {
+  const handleDrop = async (e) => {
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];
     if (!file || !file.type.startsWith("image/")) return;
 
     let url = null;
     if (onImageUpload) {
-      url = onImageUpload(file);
+      try {
+        url = await onImageUpload(file);
+      } catch (err) {
+        console.error('Drop upload error:', err);
+        return;
+      }
     } else {
       url = URL.createObjectURL(file);
     }
+
     if (!url) return;
 
     insertHtml(
-      `<img src="${url}" style="max-width: 100%; border-radius: 4px; margin-top: 4px;" />`
+      `<img src="${url}" style="max-width: 100%; border-radius: 4px; margin: 8px 0; display: block;" />`
     );
   };
 
@@ -146,6 +166,7 @@ export default function RichTextEditor({
   };
 
   const handleDone = () => {
+    console.log('Saving content, length:', draftContent.length);
     if (onChange) {
       onChange(draftContent);
     }
@@ -166,7 +187,6 @@ export default function RichTextEditor({
           mb: 1,
         }}
       >
-        {/* Bold / Italic / Underline / List */}
         <IconButton size="small" onClick={() => applyCommand("bold")}>
           <FormatBoldIcon fontSize="small" />
         </IconButton>
@@ -204,7 +224,6 @@ export default function RichTextEditor({
           <option value="h3">H3</option>
         </select>
 
-        {/* Font family */}
         <select
           onChange={(e) => applyCommand("fontName", e.target.value)}
           defaultValue=""
@@ -216,29 +235,9 @@ export default function RichTextEditor({
           <option value="Arial">Arial</option>
           <option value="Georgia">Georgia</option>
           <option value="Verdana">Verdana</option>
-          <option value="Tahoma">Tahoma</option>
           <option value="Courier New">Courier New</option>
         </select>
 
-        {/* Font size */}
-        <select
-          onChange={(e) => applyCommand("fontSize", e.target.value)}
-          defaultValue=""
-          style={{ padding: "4px", borderRadius: 4, fontSize: 12 }}
-        >
-          <option value="" disabled>
-            Size
-          </option>
-          <option value="1">10px</option>
-          <option value="2">13px</option>
-          <option value="3">16px</option>
-          <option value="4">18px</option>
-          <option value="5">24px</option>
-          <option value="6">32px</option>
-          <option value="7">48px</option>
-        </select>
-
-        {/* TEXT COLOR BUTTON */}
         <IconButton
           size="small"
           onClick={(e) => setAnchorTextColor(e.currentTarget)}
@@ -252,34 +251,25 @@ export default function RichTextEditor({
           anchorEl={anchorTextColor}
           open={openTextColor}
           onClose={() => setAnchorTextColor(null)}
-          sx={{ padding: 1 }}
         >
-          <Box sx={{ display: "flex", p: 1, gap: 1 }}>
+          <Box sx={{ p: 1 }}>
             <input
               type="color"
               onChange={(e) => {
                 applyCommand("foreColor", e.target.value);
                 setAnchorTextColor(null);
               }}
-              style={{
-                width: 32,
-                height: 32,
-                padding: 0,
-                border: "none",
-                background: "transparent",
-              }}
+              style={{ width: 32, height: 32, border: "none" }}
             />
           </Box>
         </Menu>
 
-        {/* HIGHLIGHT BUTTON */}
         <IconButton
           size="small"
           onClick={(e) => setAnchorHighlight(e.currentTarget)}
-          title="Highlight color"
+          title="Highlight"
         >
           <BorderColorIcon fontSize="small" />
-          <ArrowDropDownIcon fontSize="small" />
         </IconButton>
 
         <Menu
@@ -287,109 +277,48 @@ export default function RichTextEditor({
           open={openHighlight}
           onClose={() => setAnchorHighlight(null)}
         >
-          <Box sx={{ display: "flex", p: 1, gap: 1 }}>
+          <Box sx={{ p: 1 }}>
             <input
               type="color"
               onChange={(e) => {
                 applyCommand("hiliteColor", e.target.value);
                 setAnchorHighlight(null);
               }}
-              style={{
-                width: 32,
-                height: 32,
-                padding: 0,
-                border: "none",
-                background: "transparent",
-              }}
+              style={{ width: 32, height: 32, border: "none" }}
             />
           </Box>
         </Menu>
 
-        {/* Alignment with icons */}
-        <IconButton
-          size="small"
-          onClick={() => applyCommand("justifyLeft")}
-          title="Align left"
-        >
+        <IconButton size="small" onClick={() => applyCommand("justifyLeft")}>
           <FormatAlignLeftIcon fontSize="small" />
         </IconButton>
-        <IconButton
-          size="small"
-          onClick={() => applyCommand("justifyCenter")}
-          title="Align center"
-        >
+        <IconButton size="small" onClick={() => applyCommand("justifyCenter")}>
           <FormatAlignCenterIcon fontSize="small" />
         </IconButton>
-        <IconButton
-          size="small"
-          onClick={() => applyCommand("justifyRight")}
-          title="Align right"
-        >
+        <IconButton size="small" onClick={() => applyCommand("justifyRight")}>
           <FormatAlignRightIcon fontSize="small" />
         </IconButton>
-        <IconButton
-          size="small"
-          onClick={() => applyCommand("justifyFull")}
-          title="Justify"
-        >
-          <FormatAlignJustifyIcon fontSize="small" />
-        </IconButton>
 
-        {/* Subscript / Superscript */}
-        <Button
-          size="small"
-          variant="text"
-          onClick={() => applyCommand("subscript")}
-        >
-          X<sub style={{ fontSize: 10 }}>2</sub>
-        </Button>
-        <Button
-          size="small"
-          variant="text"
-          onClick={() => applyCommand("superscript")}
-        >
-          X<sup style={{ fontSize: 10 }}>2</sup>
-        </Button>
-
-        {/* Blockquote / Code block */}
-        <Button
-          size="small"
-          variant="outlined"
-          onClick={handleInsertBlockquote}
-        >
-          ❝
+        <Button size="small" variant="outlined" onClick={handleInsertBlockquote}>
+          Quote
         </Button>
         <Button size="small" variant="outlined" onClick={handleInsertCodeBlock}>
           {"</>"}
         </Button>
-
-        {/* Link */}
         <Button size="small" variant="text" onClick={handleAddLink}>
           Link
         </Button>
-
-        {/* Table */}
         <Button size="small" variant="text" onClick={handleInsertTable}>
           Table
         </Button>
 
-        {/* Emoji */}
-        <Button
-          size="small"
-          variant="text"
-          onClick={() => handleInsertEmoji("😊")}
-        >
-          😊
-        </Button>
-
-        {/* Image upload */}
         <Button
           variant="outlined"
           size="small"
           component="label"
           sx={{ ml: "auto" }}
         >
-          Upload image
+          Upload Image
           <input
             type="file"
             hidden
@@ -399,7 +328,7 @@ export default function RichTextEditor({
         </Button>
       </Box>
 
-      {/* Editable content area */}
+      {/* Editable area */}
       <Box
         ref={editorRef}
         contentEditable
@@ -410,11 +339,17 @@ export default function RichTextEditor({
         sx={{
           border: "1px solid rgba(0,0,0,0.2)",
           borderRadius: 1,
-          p: 1,
-          minHeight: 80,
+          p: 2,
+          minHeight: 120,
           fontSize: 14,
           "&:focus": {
             outline: "2px solid #3b82f6",
+          },
+          "& img": {
+            maxWidth: "100%",
+            height: "auto",
+            display: "block",
+            margin: "8px 0",
           },
         }}
       />

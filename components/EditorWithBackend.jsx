@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Box, Button, TextField, CircularProgress, Alert, Chip } from "@mui/material";
-import { portfolioAPI, sectionAPI } from "../lib/api.js";
+import { Box, Button, TextField, CircularProgress, Alert, Chip, Tabs, Tab } from "@mui/material";
+import { portfolioAPI, sectionAPI, projectAPI } from "../lib/api.js";
 import SectionsBoard from "./SectionsBoard";
+import ProjectsManager from "./ProjectsManager";
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useRouter } from 'next/navigation';
 
@@ -11,15 +12,18 @@ export default function EditorWithBackend({ portfolioId }) {
   const router = useRouter();
   const [portfolio, setPortfolio] = useState(null);
   const [sections, setSections] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  
+  // Tab state
+  const [currentTab, setCurrentTab] = useState(0);
 
   // Title editing state
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
 
-  // Load portfolio and sections
   useEffect(() => {
     if (portfolioId) {
       loadData();
@@ -31,15 +35,11 @@ export default function EditorWithBackend({ portfolioId }) {
       setError("");
       setLoading(true);
 
-      // Load portfolio details
       const portfolioResponse = await portfolioAPI.getById(portfolioId);
       setPortfolio(portfolioResponse.portfolio);
       setDraftTitle(portfolioResponse.portfolio.title);
 
-      // Load sections
       const sectionsResponse = await sectionAPI.getAll(portfolioId, true);
-
-      // Transform backend sections to match your local format
       const transformedSections = sectionsResponse.sections.map(sec => ({
         id: sec.id,
         title: sec.title || "Untitled Section",
@@ -51,8 +51,10 @@ export default function EditorWithBackend({ portfolioId }) {
         type: sec.type,
         order: sec.order,
       }));
-
       setSections(transformedSections);
+
+      const projectsResponse = await projectAPI.getAll(portfolioId);
+      setProjects(projectsResponse.projects);
     } catch (err) {
       setError("Failed to load portfolio: " + err.message);
       console.error(err);
@@ -61,7 +63,6 @@ export default function EditorWithBackend({ portfolioId }) {
     }
   };
 
-  // Save title to backend
   const handleTitleSave = async () => {
     try {
       setSaving(true);
@@ -80,16 +81,13 @@ export default function EditorWithBackend({ portfolioId }) {
     setIsEditingTitle(false);
   };
 
-  // Add section (save to backend)
+  // Section handlers (keep existing ones)
   const handleAddSection = async () => {
     const nextIndex = sections.length + 1;
     const newSectionData = {
       type: "custom",
       title: `Section ${nextIndex}`,
-      content: {
-        html: "",
-        images: [],
-      },
+      content: { html: "", images: [] },
       order: nextIndex,
       isVisible: true,
     };
@@ -97,8 +95,6 @@ export default function EditorWithBackend({ portfolioId }) {
     try {
       setSaving(true);
       const response = await sectionAPI.create(portfolioId, newSectionData);
-
-      // Transform and add to local state
       const newSection = {
         id: response.section.id,
         title: response.section.title,
@@ -110,7 +106,6 @@ export default function EditorWithBackend({ portfolioId }) {
         type: response.section.type,
         order: response.section.order,
       };
-
       setSections([...sections, newSection]);
     } catch (err) {
       setError("Failed to create section: " + err.message);
@@ -119,17 +114,13 @@ export default function EditorWithBackend({ portfolioId }) {
     }
   };
 
-  // Update section (save to backend)
   const handleUpdateSection = async (id, changes) => {
-    // Update local state immediately for responsiveness
     const updatedSections = sections.map((sec) =>
       sec.id === id ? { ...sec, ...changes } : sec
     );
     setSections(updatedSections);
 
-    // Prepare backend update
     const backendUpdate = {};
-
     if (changes.title !== undefined) backendUpdate.title = changes.title;
     if (changes.content !== undefined || changes.images !== undefined) {
       const section = sections.find(s => s.id === id);
@@ -144,44 +135,29 @@ export default function EditorWithBackend({ portfolioId }) {
       await sectionAPI.update(id, backendUpdate);
     } catch (err) {
       setError("Failed to update section: " + err.message);
-      // Revert local changes on error
       loadData();
     }
   };
 
-  // Handle image upload - convert to base64 and save
   const handleImageUpload = (file, sectionId) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      
       reader.onload = (e) => {
         const base64Image = e.target.result;
-        
-        // Get current section
         const section = sections.find(s => s.id === sectionId);
         if (!section) {
           reject(new Error('Section not found'));
           return;
         }
-        
-        // Add to section's images array
         const newImages = [...(section.images || []), { 
           id: Date.now(), 
           url: base64Image,
           name: file.name 
         }];
-        
-        // Update section with new image
         handleUpdateSection(sectionId, { images: newImages });
-        
-        // Return the base64 URL for insertion in editor
         resolve(base64Image);
       };
-      
-      reader.onerror = () => {
-        reject(new Error('Failed to read file'));
-      };
-      
+      reader.onerror = () => reject(new Error('Failed to read file'));
       reader.readAsDataURL(file);
     });
   };
@@ -190,15 +166,12 @@ export default function EditorWithBackend({ portfolioId }) {
     const el = e.currentTarget;
     const newWidth = el.offsetWidth;
     const newHeight = el.offsetHeight;
-
-    // Update local state only (size is not saved to backend)
     const updated = sections.map((sec) =>
       sec.id === id ? { ...sec, width: newWidth, height: newHeight } : sec
     );
     setSections(updated);
   };
 
-  // Duplicate section (create copy in backend)
   const handleDuplicateSection = async (id) => {
     const original = sections.find(sec => sec.id === id);
     if (!original) return;
@@ -206,10 +179,7 @@ export default function EditorWithBackend({ portfolioId }) {
     const duplicateData = {
       type: original.type,
       title: `${original.title} (copy)`,
-      content: {
-        html: original.content,
-        images: original.images,
-      },
+      content: { html: original.content, images: original.images },
       order: original.order + 1,
       isVisible: !original.archived,
     };
@@ -217,8 +187,6 @@ export default function EditorWithBackend({ portfolioId }) {
     try {
       setSaving(true);
       const response = await sectionAPI.create(portfolioId, duplicateData);
-
-      // Add to local state
       const newSection = {
         id: response.section.id,
         title: response.section.title,
@@ -230,8 +198,6 @@ export default function EditorWithBackend({ portfolioId }) {
         type: response.section.type,
         order: response.section.order,
       };
-
-      // Insert after original
       const idx = sections.findIndex(sec => sec.id === id);
       const updated = [...sections];
       updated.splice(idx + 1, 0, newSection);
@@ -243,7 +209,6 @@ export default function EditorWithBackend({ portfolioId }) {
     }
   };
 
-  // Delete section (remove from backend)
   const handleDeleteSection = async (id) => {
     try {
       setSaving(true);
@@ -256,20 +221,54 @@ export default function EditorWithBackend({ portfolioId }) {
     }
   };
 
-  // Toggle archive (update isVisible in backend)
   const handleToggleArchive = async (id) => {
     const section = sections.find(sec => sec.id === id);
     if (!section) return;
 
     try {
       await sectionAPI.update(id, { isVisible: section.archived });
-
-      // Update local state
       setSections(sections.map(sec =>
         sec.id === id ? { ...sec, archived: !sec.archived } : sec
       ));
     } catch (err) {
       setError("Failed to toggle archive: " + err.message);
+    }
+  };
+
+  // Project handlers
+  const handleAddProject = async (projectData) => {
+    try {
+      setSaving(true);
+      const response = await projectAPI.create(portfolioId, projectData);
+      setProjects([...projects, response.project]);
+    } catch (err) {
+      setError("Failed to create project: " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdateProject = async (projectId, updates) => {
+    try {
+      setSaving(true);
+      const response = await projectAPI.update(projectId, updates);
+      setProjects(projects.map(p => p.id === projectId ? response.project : p));
+    } catch (err) {
+      setError("Failed to update project: " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteProject = async (projectId) => {
+    try {
+      setSaving(true);
+      await projectAPI.delete(projectId);
+      setProjects(projects.filter(p => p.id !== projectId));
+    } catch (err) {
+      setError("Failed to delete project: " + err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -311,22 +310,10 @@ export default function EditorWithBackend({ portfolioId }) {
       )}
 
       {/* Title row */}
-      <Box
-        sx={{
-          mb: 3,
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          gap: 2,
-        }}
-      >
+      <Box sx={{ mb: 3, display: "flex", justifyContent: "center", alignItems: "center", gap: 2 }}>
         {!isEditingTitle ? (
           <>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => setIsEditingTitle(true)}
-            >
+            <Button variant="outlined" size="small" onClick={() => setIsEditingTitle(true)}>
               Edit title
             </Button>
           </>
@@ -340,12 +327,7 @@ export default function EditorWithBackend({ portfolioId }) {
               sx={{ flexGrow: 1, maxWidth: 400 }}
             />
             <Box sx={{ display: "flex", gap: 1 }}>
-              <Button
-                variant="contained"
-                size="small"
-                onClick={handleTitleSave}
-                disabled={saving}
-              >
+              <Button variant="contained" size="small" onClick={handleTitleSave} disabled={saving}>
                 {saving ? <CircularProgress size={20} /> : "Save"}
               </Button>
               <Button variant="text" size="small" onClick={handleTitleCancel}>
@@ -356,25 +338,42 @@ export default function EditorWithBackend({ portfolioId }) {
         )}
       </Box>
 
-      {/* Sections board */}
-      <SectionsBoard
-        sections={sections}
-        onSizeCommit={handleSizeCommit}
-        onAddSection={handleAddSection}
-        onUpdateSection={handleUpdateSection}
-        onDuplicateSection={handleDuplicateSection}
-        onDeleteSection={handleDeleteSection}
-        onToggleArchive={handleToggleArchive}
-        onImageUpload={handleImageUpload}
-      />
+      {/* Tabs */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs value={currentTab} onChange={(e, newValue) => setCurrentTab(newValue)} centered>
+          <Tab label={`Sections (${sections.length})`} />
+          <Tab label={`Projects (${projects.length})`} />
+        </Tabs>
+      </Box>
+
+      {/* Tab Panels */}
+      {currentTab === 0 && (
+        <SectionsBoard
+          sections={sections}
+          onSizeCommit={handleSizeCommit}
+          onAddSection={handleAddSection}
+          onUpdateSection={handleUpdateSection}
+          onDuplicateSection={handleDuplicateSection}
+          onDeleteSection={handleDeleteSection}
+          onToggleArchive={handleToggleArchive}
+          onImageUpload={handleImageUpload}
+        />
+      )}
+
+      {currentTab === 1 && (
+        <Box sx={{ maxWidth: 1200, mx: 'auto', px: 2 }}>
+          <ProjectsManager
+            projects={projects}
+            onAddProject={handleAddProject}
+            onUpdateProject={handleUpdateProject}
+            onDeleteProject={handleDeleteProject}
+          />
+        </Box>
+      )}
 
       {saving && (
         <Box sx={{ position: 'fixed', bottom: 16, right: 16 }}>
-          <Chip
-            label="Saving..."
-            color="primary"
-            icon={<CircularProgress size={16} />}
-          />
+          <Chip label="Saving..." color="primary" icon={<CircularProgress size={16} />} />
         </Box>
       )}
     </div>
