@@ -10,19 +10,26 @@
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^7.3.6",
-    "@mui/material": "^7.3.5",
-    "@mui/material-nextjs": "^7.3.6",
+    "@mui/material": "^7.3.6",
+    "@prisma/client": "5.22.0",
+    "bcryptjs": "^3.0.3",
+    "jsonwebtoken": "^9.0.2",
     "konva": "^10.0.9",
+    "mongoose": "^8.20.0",
     "mysql2": "^3.15.3",
     "next": "^16.0.3",
+    "next-auth": "^4.24.13",
+    "prisma": "5.22.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-konva": "^19.2.0",
-    "tailwind": "^4.0.0"
+    "tailwind": "^2.3.1"
   },
   "devDependencies": {
     "@types/node": "24.10.1",
     "@types/react": "19.2.5",
+    "eslint": "^9.39.1",
+    "eslint-config-next": "^16.0.3",
     "typescript": "5.9.3"
   }
 }

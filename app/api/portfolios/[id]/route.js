@@ -1,109 +1,175 @@
-import { authenticate } from '@/lib/auth';
-import { query } from '@/lib/db';
+import { NextResponse } from 'next/server';
+import { prisma } from '../../../../lib/db.js';
+import { authenticate } from '../../../../lib/auth.js';
 
-export async function GET(request, { params }) {
+// GET /api/portfolios/[id] - Get a single portfolio
+export async function GET(request, context) {
   try {
+    const params = await context.params;
     const { id } = params;
-    
-    const portfolios = await query(
-      `SELECT p.*, u.name as user_name, u.email as user_email
-       FROM portfolios p
-       JOIN users u ON p.user_id = u.id
-       WHERE p.id = ? AND p.is_published = TRUE`,
-      [id]
-    );
 
-    if (portfolios.length === 0) {
-      return Response.json(
-        { message: 'Portfolio not found' },
+    const portfolio = await prisma.portfolio.findUnique({
+      where: { id },
+      include: {
+        sections: {
+          where: { isVisible: true },
+          orderBy: { order: 'asc' }
+        },
+        projects: {
+          orderBy: { order: 'asc' }
+        },
+        user: {
+          select: {
+            name: true,
+            username: true,
+          }
+        }
+      }
+    });
+
+    if (!portfolio) {
+      return NextResponse.json(
+        { error: 'Portfolio not found' },
         { status: 404 }
       );
     }
 
-    const portfolio = portfolios[0];
-    const parsedPortfolio = {
-      ...portfolio,
-      personal_info: portfolio.personal_info ? JSON.parse(portfolio.personal_info) : null,
-      social_links: portfolio.social_links ? JSON.parse(portfolio.social_links) : null,
-      skills: portfolio.skills ? JSON.parse(portfolio.skills) : [],
-    };
+    if (!portfolio.isPublished) {
+      const user = await authenticate(request);
+      
+      if (!user || user.id !== portfolio.userId) {
+        return NextResponse.json(
+          { error: 'Unauthorized' },
+          { status: 401 }
+        );
+      }
+    }
 
-    return Response.json(parsedPortfolio);
+    return NextResponse.json({ portfolio });
+
   } catch (error) {
     console.error('Get portfolio error:', error);
-    return Response.json(
-      { message: 'Internal server error' },
+    return NextResponse.json(
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
 }
 
-export async function PUT(request, { params }) {
-  const user = await authenticate(request);
-
-  if (!user) {
-    return Response.json(
-      { message: 'Unauthorized' },
-      { status: 401 }
-    );
-  }
-
+// PUT /api/portfolios/[id] - Update a portfolio
+export async function PUT(request, context) {
   try {
+    const user = await authenticate(request);
+    
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const params = await context.params;
     const { id } = params;
     const body = await request.json();
 
-    // Verify portfolio belongs to user
-    const userPortfolios = await query(
-      'SELECT id FROM portfolios WHERE id = ? AND user_id = ?',
-      [id, user.id]
-    );
+    const existingPortfolio = await prisma.portfolio.findUnique({
+      where: { id }
+    });
 
-    if (userPortfolios.length === 0) {
-      return Response.json(
-        { message: 'Portfolio not found' },
+    if (!existingPortfolio) {
+      return NextResponse.json(
+        { error: 'Portfolio not found' },
         { status: 404 }
       );
     }
 
-    const updateFields = [];
-    const updateValues = [];
+    if (existingPortfolio.userId !== user.id) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
+      );
+    }
 
-    Object.keys(body).forEach(key => {
-      if (['personal_info', 'social_links', 'skills'].includes(key)) {
-        updateFields.push(`${key} = ?`);
-        updateValues.push(JSON.stringify(body[key]));
-      } else {
-        updateFields.push(`${key} = ?`);
-        updateValues.push(body[key]);
+    const { title, description, theme, isPublished } = body;
+    const updateData = {};
+
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (theme !== undefined) updateData.theme = theme;
+    if (isPublished !== undefined) updateData.isPublished = isPublished;
+
+    const portfolio = await prisma.portfolio.update({
+      where: { id },
+      data: updateData,
+      include: {
+        _count: {
+          select: {
+            projects: true,
+            sections: true,
+          }
+        }
       }
     });
 
-    updateFields.push('updated_at = CURRENT_TIMESTAMP');
-    updateValues.push(id, user.id);
+    return NextResponse.json({
+      message: 'Portfolio updated successfully',
+      portfolio
+    });
 
-    await query(
-      `UPDATE portfolios SET ${updateFields.join(', ')} 
-       WHERE id = ? AND user_id = ?`,
-      updateValues
-    );
-
-    const [updatedPortfolio] = await query(
-      'SELECT * FROM portfolios WHERE id = ?',
-      [id]
-    );
-
-    const parsedPortfolio = {
-      ...updatedPortfolio,
-      personal_info: updatedPortfolio.personal_info ? JSON.parse(updatedPortfolio.personal_info) : null,
-      social_links: updatedPortfolio.social_links ? JSON.parse(updatedPortfolio.social_links) : null,
-      skills: updatedPortfolio.skills ? JSON.parse(updatedPortfolio.skills) : [],
-    };
-
-    return Response.json(parsedPortfolio);
   } catch (error) {
     console.error('Update portfolio error:', error);
-    return Response.json(
-      { message: 'Internal server error' },
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/portfolios/[id] - Delete a portfolio
+export async function DELETE(request, context) {
+  try {
+    const user = await authenticate(request);
+    
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const params = await context.params;
+    const { id } = params;
+
+    const existingPortfolio = await prisma.portfolio.findUnique({
+      where: { id }
+    });
+
+    if (!existingPortfolio) {
+      return NextResponse.json(
+        { error: 'Portfolio not found' },
+        { status: 404 }
+      );
+    }
+
+    if (existingPortfolio.userId !== user.id) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
+      );
+    }
+
+    await prisma.portfolio.delete({
+      where: { id }
+    });
+
+    return NextResponse.json({
+      message: 'Portfolio deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Delete portfolio error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

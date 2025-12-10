@@ -4,3 +4,5 @@ npm-debug.log
 .env.local
 .DS_Store
 .next
+
+/lib/generated/prisma

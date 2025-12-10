@@ -1,46 +1,65 @@
-import { hashPassword } from '@/lib/auth';
-import { query } from '@/lib/db';
+import { NextResponse } from 'next/server';
+import { prisma } from '../../../../lib/db.js';
+import { hashPassword } from '../../../../lib/auth.js';
 
 export async function POST(request) {
   try {
-    const { name, email, password } = await request.json();
+    const body = await request.json();
+    const { email, username, password, name } = body;
 
-    // Validate input
-    if (!name || !email || !password) {
-      return Response.json(
-        { message: 'All fields are required' },
+    // Basic validation
+    if (!email || !username || !password || !name) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    // Check if user exists
-    const existingUsers = await query(
-      'SELECT id FROM users WHERE email = ?',
-      [email]
-    );
+    // Check if user already exists
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [{ email }, { username }]
+      }
+    });
 
-    if (existingUsers.length > 0) {
-      return Response.json(
-        { message: 'User already exists' },
-        { status: 400 }
+    if (existingUser) {
+      return NextResponse.json(
+        { error: 'User with this email or username already exists' },
+        { status: 409 }
       );
     }
+
+    // Hash password
+    const passwordHash = await hashPassword(password);
 
     // Create user
-    const hashedPassword = await hashPassword(password);
-    const result = await query(
-      'INSERT INTO users (name, email, password) VALUES (?, ?, ?)',
-      [name, email, hashedPassword]
-    );
+    const user = await prisma.user.create({
+      data: {
+        email,
+        username,
+        name,
+        passwordHash
+      },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        name: true,
+        createdAt: true
+      }
+    });
 
-    return Response.json(
-      { message: 'User created successfully', userId: result.insertId },
+    return NextResponse.json(
+      {
+        message: 'User created successfully',
+        user
+      },
       { status: 201 }
     );
   } catch (error) {
     console.error('Registration error:', error);
-    return Response.json(
-      { message: 'Internal server error' },
+    return NextResponse.json(
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

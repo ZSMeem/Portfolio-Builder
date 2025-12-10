@@ -1,56 +1,75 @@
-import { verifyPassword, generateToken } from '@/lib/auth';
-import { query } from '@/lib/db';
+import { NextResponse } from 'next/server';
+import { prisma } from '../../../../lib/db.js';
+import { verifyPassword, createToken } from '../../../../lib/auth.js';
 
 export async function POST(request) {
   try {
-    const { email, password } = await request.json();
+    const body = await request.json();
+    const { email, password } = body;
 
-    // Validate input
+    // Basic validation
     if (!email || !password) {
-      return Response.json(
-        { message: 'Email and password are required' },
+      return NextResponse.json(
+        { error: 'Email and password are required' },
         { status: 400 }
       );
     }
 
-    // Get user from database
-    const users = await query(
-      'SELECT * FROM users WHERE email = ?',
-      [email]
-    );
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: { email }
+    });
 
-    if (users.length === 0) {
-      return Response.json(
-        { message: 'Invalid credentials' },
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Invalid credentials' },
         { status: 401 }
       );
     }
-
-    const user = users[0];
 
     // Verify password
-    const isValidPassword = await verifyPassword(password, user.password);
+    const isValidPassword = await verifyPassword(password, user.passwordHash);
+
     if (!isValidPassword) {
-      return Response.json(
-        { message: 'Invalid credentials' },
+      return NextResponse.json(
+        { error: 'Invalid credentials' },
         { status: 401 }
       );
     }
 
-    // Generate token
-    const token = generateToken(user.id);
+    // Create token
+    const token = createToken(user.id);
 
     // Return user data (excluding password)
-    const { password: _, ...userWithoutPassword } = user;
+    const userData = {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      name: user.name,
+      createdAt: user.createdAt
+    };
 
-    return Response.json({
-      token,
-      user: userWithoutPassword,
+    const response = NextResponse.json({
+      message: 'Login successful',
+      user: userData,
+      token
     });
+
+    // Set token in HTTP-only cookie
+    response.cookies.set('auth-token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/',
+    });
+
+    return response;
+
   } catch (error) {
     console.error('Login error:', error);
-    return Response.json(
-      { message: 'Internal server error' },
+    return NextResponse.json(
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

@@ -11,17 +11,18 @@ export default function SectionsBoard({
   onDuplicateSection,
   onDeleteSection,
   onToggleArchive,
+  onImageUpload,
 }) {
   return (
     <Box
       sx={{
         display: "flex",
         width: "80%",
-        flexDirection: "column", // stack Paper + Button vertically
-        alignItems: "center", // center both horizontally
+        flexDirection: "column",
+        alignItems: "center",
         mx: "auto",
         mt: 4,
-        gap: 2, // spacing between Paper and Button
+        gap: 2,
       }}
     >
       {sections.map((section) => (
@@ -33,6 +34,7 @@ export default function SectionsBoard({
           onDuplicateSection={onDuplicateSection}
           onDeleteSection={onDeleteSection}
           onToggleArchive={onToggleArchive}
+          onImageUpload={(file) => onImageUpload(file, section.id)}
         />
       ))}
 

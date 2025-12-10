@@ -16,6 +16,10 @@ import {
   DialogContentText,
   DialogActions,
   Chip,
+  TextField,
+  Alert,
+  CircularProgress,
+  LinearProgress,
 } from "@mui/material";
 import { styled, alpha } from "@mui/material/styles";
 import EditIcon from "@mui/icons-material/Edit";
@@ -24,6 +28,7 @@ import UnarchiveIcon from "@mui/icons-material/Unarchive";
 import FileCopyIcon from "@mui/icons-material/FileCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
 import RichTextEditor from "./RichTextEditor";
 
@@ -74,10 +79,16 @@ export default function SectionCard({
   onDuplicateSection,
   onDeleteSection,
   onToggleArchive,
+  onImageUpload,
 }) {
   const [anchorEl, setAnchorEl] = React.useState(null);
   const [isEditing, setIsEditing] = React.useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [editTitleDialogOpen, setEditTitleDialogOpen] = React.useState(false);
+  const [draftTitle, setDraftTitle] = React.useState(section.title);
+
+  // Upload feedback
+  const [uploadStatus, setUploadStatus] = React.useState(null); // { status: 'uploading' | 'success' | 'error', fileName: string }
 
   const open = Boolean(anchorEl);
   const isArchived = section.archived;
@@ -92,6 +103,16 @@ export default function SectionCard({
   const handleClickEdit = () => {
     setIsEditing(true);
     handleCloseMenu();
+  };
+
+  const handleClickEditTitle = () => {
+    setEditTitleDialogOpen(true);
+    handleCloseMenu();
+  };
+
+  const handleSaveTitle = () => {
+    onUpdateSection(section.id, { title: draftTitle });
+    setEditTitleDialogOpen(false);
   };
 
   const handleClickDuplicate = () => {
@@ -123,12 +144,27 @@ export default function SectionCard({
     onUpdateSection(section.id, { content: html });
   };
 
-  // For uploads: update section.images and return URL so editor can insert
-  const handleImageUpload = (file) => {
-    const url = URL.createObjectURL(file);
-    const images = [...(section.images || []), { id: Date.now(), url }];
-    onUpdateSection(section.id, { images });
-    return url; // used by RichTextEditor to insert <img>
+  // For uploads: show progress and save image
+  const handleImageUpload = async (file) => {
+    setUploadStatus({ status: 'uploading', fileName: file.name });
+
+    try {
+      const url = await onImageUpload(file);
+      setUploadStatus({ status: 'success', fileName: file.name });
+
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setUploadStatus(null);
+      }, 3000);
+
+      return url;
+    } catch (error) {
+      setUploadStatus({ status: 'error', fileName: file.name });
+      setTimeout(() => {
+        setUploadStatus(null);
+      }, 5000);
+      throw error;
+    }
   };
 
   return (
@@ -185,7 +221,11 @@ export default function SectionCard({
         >
           <MenuItem onClick={handleClickEdit} disableRipple>
             <EditIcon />
-            Edit
+            Edit Content
+          </MenuItem>
+          <MenuItem onClick={handleClickEditTitle} disableRipple>
+            <EditIcon />
+            Edit Title
           </MenuItem>
           <MenuItem onClick={handleClickDuplicate} disableRipple>
             <FileCopyIcon />
@@ -220,6 +260,27 @@ export default function SectionCard({
         </DialogActions>
       </Dialog>
 
+      {/* Edit title dialog */}
+      <Dialog open={editTitleDialogOpen} onClose={() => setEditTitleDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Section Title</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            fullWidth
+            label="Section Title"
+            value={draftTitle}
+            onChange={(e) => setDraftTitle(e.target.value)}
+            margin="normal"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditTitleDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleSaveTitle} variant="contained">
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Title + archived chip */}
       <Box
         sx={{
@@ -234,6 +295,28 @@ export default function SectionCard({
         </Typography>
         {isArchived && <Chip label="Archived" size="small" />}
       </Box>
+
+      {/* Upload status feedback */}
+      {uploadStatus && (
+        <Box sx={{ mb: 2 }}>
+          {uploadStatus.status === 'uploading' && (
+            <Alert severity="info" icon={<CircularProgress size={20} />}>
+              Uploading {uploadStatus.fileName}...
+              <LinearProgress sx={{ mt: 1 }} />
+            </Alert>
+          )}
+          {uploadStatus.status === 'success' && (
+            <Alert severity="success" icon={<CheckCircleIcon />}>
+              {uploadStatus.fileName} uploaded successfully!
+            </Alert>
+          )}
+          {uploadStatus.status === 'error' && (
+            <Alert severity="error">
+              Failed to upload {uploadStatus.fileName}
+            </Alert>
+          )}
+        </Box>
+      )}
 
       {/* Content area */}
       <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
@@ -252,48 +335,15 @@ export default function SectionCard({
                   "& p": { margin: 0, marginBottom: "0.35rem" },
                   "& ul": { paddingLeft: "1.2rem", margin: 0 },
                   "& li": { marginBottom: "0.1rem" },
+                  "& img": { maxWidth: "100%", borderRadius: 1, marginTop: 1, marginBottom: 1 },
                 }}
                 dangerouslySetInnerHTML={{ __html: section.content }}
               />
             ) : (
               <Typography variant="body2" color="text.secondary">
-                Resizable content area for {section.title}. Click Options → Edit
+                Resizable content area for {section.title}. Click Options → Edit Content
                 to add rich text and images.
               </Typography>
-            )}
-
-            {section.images?.length > 0 && (
-              <Box
-                sx={{
-                  mt: 1,
-                  display: "flex",
-                  gap: 1,
-                  flexWrap: "wrap",
-                }}
-              >
-                {section.images.map((img) => (
-                  <Box
-                    key={img.id}
-                    sx={{
-                      width: 80,
-                      height: 80,
-                      borderRadius: 1,
-                      overflow: "hidden",
-                      border: "1px solid rgba(0,0,0,0.15)",
-                    }}
-                  >
-                    <img
-                      src={img.url}
-                      alt=""
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                      }}
-                    />
-                  </Box>
-                ))}
-              </Box>
             )}
           </>
         )}
