@@ -46,10 +46,9 @@ Docker is used to simplify development, testing, and deployment.
 |-------|-------------|
 | Frontend | React |
 | Backend | Node.js |
-| Database | AWS RDS (MySQL) |
-| Cloud Storage | AWS S3 |
+| Database | AWS RDS |
 | Version Control | GitHub |
-| Containerization | Docker |
+
 
 ---
 
@@ -59,7 +58,7 @@ Docker is used to simplify development, testing, and deployment.
 |-------|-------|
 | Week 1–2 | Requirement analysis & architecture design |
 | Week 3–4 | Frontend & backend initial development |
-| Week 5 | AWS setup (RDS + S3), Docker integration |
+| Week 5 | AWS setup (RDS) |
 | Week 6 | Testing, debugging, and deployment |
 | Week 7 | Final demo and presentation |
 
