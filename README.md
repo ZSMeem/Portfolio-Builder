@@ -10,22 +10,21 @@
 
 ## 🧩 Project Overview  
 **Portfolio Builder** is a full-stack web application that enables users to **design and customize personal portfolio websites** in an interactive and visually engaging way.  
-Users can create accounts, log in securely, and personalize their portfolios using **drag-and-drop tools**, customizable shapes, and color templates. Each completed portfolio can be shared publicly through a personalized link.
+Users can create accounts, log in securely, and personalize their portfolios by adding pages and customizable sections. Each completed portfolio can be shared publicly through a personalized link.
 
 ---
 
 ## ⚙️ Key Features  
 - 🔐 **User Authentication:** Secure sign-up, login, and logout functionality.  
 - 🧑‍💼 **Profile Management:** Edit and update personal details stored in a relational database.  
-- 🎨 **UI Customization:** Drag-and-drop interface for adding shapes, text blocks, and other visual elements.  
-- 🧱 **Template System:** Choose from predefined portfolio templates or create custom designs.  
-- 🖼 **Image Management:** Upload and store images using AWS S3.  
+- 🎨 **UI Customization:** Add new pages and sections to each page of the portfolio.  
+- 🧱 **Template System:** Choose from predefined portfolio templates or create custom designs. 
 - 📱 **Responsive Design:** Optimized for desktop and mobile screens.  
 
 ---
 
 ## ☁️ AWS Integration  
-- **AWS RDS (MySQL):**  
+- **AWS RDS (PostgreSQL):**  
   Used to store user credentials, layout configurations, and customization details.  
 - **AWS S3:**  
   Stores user-uploaded images and static files securely.  
@@ -70,7 +69,8 @@ Docker is used to simplify development, testing, and deployment.
 - Collaborative editing mode for multiple users  
 - Custom domain publishing for portfolios  
 - Advanced visual templates and animations  
-- Analytics dashboard for portfolio views  
+- Analytics dashboard for portfolio views
+- Upload and store images using AWS S3.  
 
 ---
 
