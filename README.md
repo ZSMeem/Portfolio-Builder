@@ -26,18 +26,8 @@ Users can create accounts, log in securely, and personalize their portfolios by 
 ## ☁️ AWS Integration  
 - **AWS RDS (PostgreSQL):**  
   Used to store user credentials, layout configurations, and customization details.  
-- **AWS S3:**  
-  Stores user-uploaded images and static files securely.  
-- **AWS Configuration:**  
-  Ensures smooth integration and communication between backend services and AWS resources.
-
----
-
-## 🐳 Docker Containerization  
-Docker is used to simplify development, testing, and deployment.  
-- Containerizes the **frontend (React)**, **backend (Node.js)**, and **database (MySQL)** for consistent environments.  
-- Uses **Docker Compose** to orchestrate services and streamline team collaboration.
-
+- **AWS Amplify:**  
+  AWS Amplify handles the frontend, authentication, APIs, and deployment, ​
 ---
 
 ## 💻 Tech Stack  
