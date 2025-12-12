@@ -58,7 +58,7 @@ Docker is used to simplify development, testing, and deployment.
 |-------|-------|
 | Week 1–2 | Requirement analysis & architecture design |
 | Week 3–4 | Frontend & backend initial development |
-| Week 5 | AWS setup (RDS) |
+| Week 5 | AWS setup (RDS) and AWS Amplifier |
 | Week 6 | Testing, debugging, and deployment |
 | Week 7 | Final demo and presentation |
 
@@ -69,13 +69,13 @@ Docker is used to simplify development, testing, and deployment.
 - Custom domain publishing for portfolios  
 - Advanced visual templates and animations  
 - Analytics dashboard for portfolio views
-- Upload and store images using AWS S3.  
+- Upload and store images using AWS services.  
 
 ---
 
 ## 🧠 Summary  
 The **Portfolio Builder** project aims to simplify the process of creating professional, personalized portfolio websites.  
-By leveraging **AWS services**, **Docker**, and a **modern full-stack tech stack**, it provides a scalable and efficient platform for both creativity and performance.
+By leveraging **AWS services**, and a **modern full-stack tech stack**, it provides a scalable and efficient platform for both creativity and performance.
 
 ---
 
